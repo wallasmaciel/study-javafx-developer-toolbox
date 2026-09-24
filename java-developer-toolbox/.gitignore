@@ -1,0 +1,17 @@
+.idea/
+.github/
+
+*.iml
+
+target/
+out/
+
+build/
+bin/
+.classpath
+.project
+.settings
+
+.gradle
+
+notes.txt
