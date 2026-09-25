@@ -2,6 +2,9 @@ package dev.toolbox;
 
 import javafx.application.Application;
 import javafx.application.Platform;
+import javafx.event.ActionEvent;
+import javafx.event.Event;
+import javafx.event.EventHandler;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
@@ -28,6 +31,19 @@ public class DeveloperToolboxApplication extends Application {
         root.setTop(header);
 
         var sidebar = new VBox(10);
+        sidebar.addEventFilter(ActionEvent.ACTION, new EventHandler<Event>() {
+            @Override
+            public void handle(Event event) {
+                LOGGER.log(System.Logger.Level.INFO, "CAPTURING: evento recebido pela sidebar");
+            }
+        });
+
+        sidebar.addEventHandler(ActionEvent.ACTION, new EventHandler<Event>() {
+            @Override
+            public void handle(Event event) {
+                LOGGER.log(System.Logger.Level.INFO, "BUBBLING: evento recebido pela sidebar");
+            }
+        });
 
         var httpButton = new Button("HTTP Client");
         httpButton.setMaxWidth(Double.MAX_VALUE);
@@ -62,6 +78,16 @@ public class DeveloperToolboxApplication extends Application {
 
         var footer = new Label("Ready");
         root.setBottom(footer);
+
+        httpButton.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent event) {
+                footer.setText("HTTP Client selected");
+
+                LOGGER.log(System.Logger.Level.INFO, "ACTION: tipo={0}, alvo={1}, thread={2}, fxThread={3}", 
+                    event.getEventType(), event.getTarget(), Thread.currentThread().getName(), Platform.isFxApplicationThread());
+            }
+        });
 
         var scene = new Scene(root, 800, 700);
 
