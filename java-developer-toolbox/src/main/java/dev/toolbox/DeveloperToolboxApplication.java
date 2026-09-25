@@ -5,6 +5,7 @@ import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.event.Event;
 import javafx.event.EventHandler;
+import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
@@ -28,9 +29,10 @@ public class DeveloperToolboxApplication extends Application {
         var root = new BorderPane();
 
         var header = new Label("Java Developer Toolbox");
+        header.setPadding(new Insets(20, 22, 20, 22));
         root.setTop(header);
 
-        var sidebar = new VBox(10);
+        var sidebar = new VBox(2);
         sidebar.addEventFilter(ActionEvent.ACTION, new EventHandler<Event>() {
             @Override
             public void handle(Event event) {
@@ -69,6 +71,7 @@ public class DeveloperToolboxApplication extends Application {
         );
 
         sidebar.setPrefWidth(160);
+        sidebar.setPadding(new Insets(0, 0, 0, 22));
         root.setLeft(sidebar);
 
         var workspace = new StackPane(
@@ -77,6 +80,7 @@ public class DeveloperToolboxApplication extends Application {
         root.setCenter(workspace);
 
         var footer = new Label("Ready");
+        footer.setPadding(new Insets(20, 22, 20, 22));
         root.setBottom(footer);
 
         httpButton.setOnAction(new EventHandler<ActionEvent>() {
