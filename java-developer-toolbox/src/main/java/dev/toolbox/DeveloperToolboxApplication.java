@@ -1,11 +1,14 @@
 package dev.toolbox;
 
+import dev.toolbox.view.BuilderView;
+import dev.toolbox.view.HttpClientView;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.event.Event;
 import javafx.event.EventHandler;
 import javafx.geometry.Insets;
+import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
@@ -16,6 +19,11 @@ import javafx.stage.Stage;
 
 public class DeveloperToolboxApplication extends Application {
     private static final System.Logger LOGGER = System.getLogger(DeveloperToolboxApplication.class.getName());
+    private final BuilderView httpClientView;
+
+    public DeveloperToolboxApplication() {
+        this.httpClientView = new HttpClientView();
+    }
     
     @Override
     public void init() {
@@ -71,21 +79,24 @@ public class DeveloperToolboxApplication extends Application {
         );
 
         sidebar.setPrefWidth(160);
-        sidebar.setPadding(new Insets(0, 0, 0, 22));
+        sidebar.setPadding(new Insets(0, 22, 0, 22));
         root.setLeft(sidebar);
 
         var workspace = new StackPane(
             new Label("Workspace")
         );
+        workspace.setPadding(new Insets(0, 22, 20, 0));
         root.setCenter(workspace);
 
         var footer = new Label("Ready");
         footer.setPadding(new Insets(20, 22, 20, 22));
         root.setBottom(footer);
 
+        Node httpClientNode = httpClientView.build();
         httpButton.setOnAction(new EventHandler<ActionEvent>() {
             @Override
             public void handle(ActionEvent event) {
+                workspace.getChildren().setAll(httpClientNode);
                 footer.setText("HTTP Client selected");
 
                 LOGGER.log(System.Logger.Level.INFO, "ACTION: tipo={0}, alvo={1}, thread={2}, fxThread={3}", 
