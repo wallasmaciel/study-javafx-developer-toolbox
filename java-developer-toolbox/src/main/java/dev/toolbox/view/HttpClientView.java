@@ -1,6 +1,11 @@
 package dev.toolbox.view;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.IntStream;
+
 import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
@@ -74,14 +79,18 @@ public class HttpClientView implements BuilderView {
         gridPane.setVgap(5);
 
         var firstColumn = new ColumnConstraints();
-        firstColumn.setPercentWidth(50);
+        firstColumn.setPercentWidth(44);
 
         var secondColumn = new ColumnConstraints();
-        secondColumn.setPercentWidth(50);
+        secondColumn.setPercentWidth(44);
+
+        var thirdColumn = new ColumnConstraints();
+        thirdColumn.setPercentWidth(12);
 
         gridPane.getColumnConstraints().addAll(
             firstColumn,
-            secondColumn
+            secondColumn,
+            thirdColumn
         );
 
         return gridPane;
@@ -89,10 +98,21 @@ public class HttpClientView implements BuilderView {
 
     private Node headers() {
         var box = new VBox();
+        box.setMaxWidth(Double.MAX_VALUE);
+
+        var boxTitle = new HBox();
+        boxTitle.setAlignment(Pos.CENTER_LEFT);
+        VBox.setMargin(boxTitle, new Insets(18, 0, 0, 0));
 
         var title = new Label("Headers");
-        VBox.setMargin(title, new Insets(18, 0, 0, 0));
         title.setFont(Font.font(null, FontWeight.BOLD, 14));
+
+        var spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        var addHeader = new Button("+ Header");
+
+        boxTitle.getChildren().addAll(title, spacer, addHeader);
 
         var headerScroll = new ScrollPane();
         headerScroll.setFitToWidth(true);
@@ -103,32 +123,48 @@ public class HttpClientView implements BuilderView {
         headerGrid.add(new Label("Key"), 0, 0);
         headerGrid.add(new Label("Value"), 1, 0);
 
+        var rows = new ArrayList<HeaderControls>();
         var contentGrid = createGrid();
-        drawTableHeader(contentGrid, 0, "Accept", "application/json");
 
-        for (int i = 1; i < 12; i++) {
-            drawTableHeader(contentGrid, i, null, null);
-        }
-
+        addHeader.setOnAction(event -> {
+            drawTable(rows, contentGrid);
+        });
+        
+        drawTable(rows, contentGrid, "Accept", "application/json");
+        
         headerScroll.setContent(contentGrid);
 
         VBox.setMargin(headerScroll, new Insets(8, 0, 0, 0));
-        box.getChildren().addAll(title, headerGrid, headerScroll);
+        box.getChildren().addAll(boxTitle, headerGrid, headerScroll);
 
         return box;
     }
 
-    private void drawTableHeader(GridPane gridPane, int row, String keyPromptText, String valuePromptText) {
+    private void drawTable(List<HeaderControls> rows, GridPane gridPane) {
+        drawTable(rows, gridPane, null, null);
+    }
+
+    private void drawTable(List<HeaderControls> rows, GridPane gridPane, String keyPromptText, String valuePromptText) {
         var keyField = new TextField();
-        if (keyPromptText != null) keyField.setPromptText(keyPromptText);
+        if (keyPromptText != null) keyField.setText(keyPromptText);
         keyField.setMaxWidth(Double.MAX_VALUE);
 
         var valueField = new TextField();
-        if (valuePromptText != null) valueField.setPromptText(valuePromptText);
+        if (valuePromptText != null) valueField.setText(valuePromptText);
         valueField.setMaxWidth(Double.MAX_VALUE);
 
-        gridPane.add(keyField, 0, row);
-        gridPane.add(valueField, 1, row);
+        var removeButton = new Button("Remove");
+
+        var header = new HeaderControls(keyField, valueField, removeButton);
+
+        removeButton.setOnAction(event -> {
+            removeLinha(rows, gridPane, header);
+        });
+
+        int rowIndex = rows.size();
+        rows.add(header);
+
+        gridPane.addRow(rowIndex, keyField, valueField, removeButton);
     }
 
     private VBox response() {
@@ -152,4 +188,29 @@ public class HttpClientView implements BuilderView {
 
         return box;
     }
+
+    private void removeLinha(List<HeaderControls> rows, GridPane gridPane, HeaderControls header) {
+        if (!rows.remove(header)) return;
+
+        gridPane.getChildren().removeAll(
+            header.key(), 
+            header.value(), 
+            header.remove()
+        );
+
+        IntStream.range(0, rows.size())
+            .forEach(i -> {
+                var current = rows.get(i);
+
+                GridPane.setRowIndex(current.key(), i);
+                GridPane.setRowIndex(current.value(), i);
+                GridPane.setRowIndex(current.remove(), i);
+            });
+    }
+
+    private record HeaderControls(
+        TextField key,
+        TextField value,
+        Button remove
+    ) {}
 }
