@@ -1,10 +1,14 @@
 package dev.toolbox.view;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.stream.IntStream;
 
 import dev.toolbox.property.HttpHeader;
+import javafx.beans.binding.Bindings;
+import javafx.beans.binding.BooleanBinding;
 import javafx.collections.FXCollections;
 import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
@@ -18,6 +22,7 @@ import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Separator;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
+import javafx.scene.control.Tooltip;
 import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
@@ -45,35 +50,41 @@ public class HttpClientView implements BuilderView {
     }
 
     private Node title() {
-        var firstLine = new Label("HTTP Client");
-        firstLine.setFont(Font.font(null, FontWeight.BOLD, 22));
+        var lbTitle = new Label("HTTP Client");
+        lbTitle.setFont(Font.font(null, FontWeight.BOLD, 22));
 
-        return firstLine;
+        return lbTitle;
     }
 
     private Node requestBar() {
-        var secondLine = new HBox();
-        secondLine.setSpacing(5);
+        var content = new HBox();
+        content.setSpacing(5);
 
-        var secondLineMethod = new ComboBox<String>();
-        secondLineMethod.getItems().addAll("GET", "POST", "PUT", "DELETE", "PATCH");
-        secondLineMethod.setValue("GET");
-        secondLine.getChildren().add(secondLineMethod);
+        var selectMethod = new ComboBox<String>();
+        selectMethod.getItems().addAll("GET", "POST", "PUT", "DELETE", "PATCH");
+        selectMethod.setValue("GET");
+        content.getChildren().add(selectMethod);
 
-        var secondLineUrl = new TextField();
-        secondLineUrl.setPromptText("Enter URL");
-        secondLineUrl.setMaxWidth(Double.MAX_VALUE);
-        secondLine.getChildren().add(secondLineUrl);
+        var txtUrl = new TextField();
+        txtUrl.setPromptText("Enter URL");
+        txtUrl.setMaxWidth(Double.MAX_VALUE);
+        content.getChildren().add(txtUrl);
 
-        HBox.setHgrow(secondLineUrl, Priority.ALWAYS);
+        HBox.setHgrow(txtUrl, Priority.ALWAYS);
 
-        var secondLineSendButton = new Button("Send");
-        secondLineSendButton.setDisable(true);
-        secondLine.getChildren().add(secondLineSendButton);
+        var btnSend = new Button("Send");
+        BooleanBinding validUrl = Bindings.createBooleanBinding(() -> 
+            validarUrl(txtUrl.getText()
+        ), txtUrl.textProperty());
+        btnSend.disableProperty().bind(validUrl.not());
+        btnSend.setTooltip(
+            new Tooltip("Ação de envio será implementada futuramente."));
 
-        VBox.setMargin(secondLine, new Insets(16, 0, 16, 0));
+        content.getChildren().add(btnSend);
 
-        return secondLine;
+        VBox.setMargin(content, new Insets(16, 0, 16, 0));
+
+        return content;
     }
 
     private GridPane createGrid() {
@@ -233,6 +244,26 @@ public class HttpClientView implements BuilderView {
         VBox.setVgrow(box, Priority.ALWAYS);
 
         return box;
+    }
+
+    private boolean validarUrl(String url) {
+        if (url == null || url.isBlank()) {
+            return false;
+        }
+
+        try {
+            URI uri = new URI(url.trim());
+
+            String scheme = uri.getScheme();
+
+            boolean protocoloValido = "http".equalsIgnoreCase(scheme)
+                || "https".equalsIgnoreCase(scheme);
+
+            return protocoloValido
+                && uri.getHost() != null;
+        } catch (URISyntaxException e) {
+            return false;
+        }
     }
 
     private record HeaderControls(
