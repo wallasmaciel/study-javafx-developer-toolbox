@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.stream.IntStream;
 
 import dev.toolbox.property.HttpHeader;
+import javafx.application.Platform;
 import javafx.beans.InvalidationListener;
 import javafx.beans.binding.Bindings;
 import javafx.beans.binding.BooleanBinding;
@@ -72,7 +73,7 @@ public class HttpClientView implements BuilderView {
         var groupField = new VBox();
         groupField.setMaxWidth(Double.MAX_VALUE);
         
-        var txtUrl = new TextField();
+        var txtUrl = new TextField("http://localhost:8080");
         txtUrl.setPromptText("Enter URL");
         groupField.getChildren().add(txtUrl);
 
@@ -113,6 +114,30 @@ public class HttpClientView implements BuilderView {
         txtUrl.textProperty().addListener(invalidationListener);
         
         btnSend.disableProperty().bind(validUrl.not().or(isLoading));
+        btnSend.setOnAction(event -> {
+            isLoading.set(true);
+
+            new Thread(new Runnable() {
+                @Override
+                    public void run() {
+                        LOGGER.log(System.Logger.Level.INFO, "Thread Name: {0}", Thread.currentThread().getName());
+                        LOGGER.log(System.Logger.Level.INFO, "UI: {0}", Platform.isFxApplicationThread() ? "UI Thread" : "Background Thread");
+                        try {
+                            Thread.sleep(5_000);
+
+                            Platform.runLater(() -> {
+                                if (txtResponse == null) return;
+                                txtResponse.setText("Simulated request completed");
+                            });
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                        } finally {
+                            Platform.runLater(() -> 
+                                isLoading.set(false));
+                        }
+                    }
+            }).start();
+        });
 
         VBox.setMargin(content, new Insets(16, 0, 16, 0));
 
@@ -256,21 +281,22 @@ public class HttpClientView implements BuilderView {
         );
     }
 
+    private TextArea txtResponse;
     private VBox response() {
         var title = new Label("Response");
         title.setFont(Font.font(null, FontWeight.BOLD, 14));
         VBox.setMargin(title, new Insets(8, 0, 0, 0));
 
-        var text = new TextArea();
-        text.setEditable(false);
-        text.setMaxWidth(Double.MAX_VALUE);
+        txtResponse = new TextArea();
+        txtResponse.setEditable(false);
+        txtResponse.setMaxWidth(Double.MAX_VALUE);
 
-        text.setMaxHeight(Double.MAX_VALUE);
-        VBox.setVgrow(text, Priority.ALWAYS);
+        txtResponse.setMaxHeight(Double.MAX_VALUE);
+        VBox.setVgrow(txtResponse, Priority.ALWAYS);
 
         var box = new VBox(
             title,
-            text
+            txtResponse
         );
         VBox.setMargin(box, new Insets(2, 0, 0, 0));
         VBox.setVgrow(box, Priority.ALWAYS);
