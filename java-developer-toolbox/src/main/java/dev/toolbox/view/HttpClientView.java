@@ -7,8 +7,11 @@ import java.util.Map;
 import java.util.stream.IntStream;
 
 import dev.toolbox.property.HttpHeader;
+import javafx.beans.InvalidationListener;
 import javafx.beans.binding.Bindings;
 import javafx.beans.binding.BooleanBinding;
+import javafx.beans.property.BooleanProperty;
+import javafx.beans.property.SimpleBooleanProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
@@ -33,6 +36,7 @@ import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 
 public class HttpClientView implements BuilderView {
+    private static final System.Logger LOGGER = System.getLogger(HttpClientView.class.getName());
     public Node build() {
         var root = new VBox();
         root.setMaxWidth(Double.MAX_VALUE);
@@ -65,22 +69,50 @@ public class HttpClientView implements BuilderView {
         selectMethod.setValue("GET");
         content.getChildren().add(selectMethod);
 
+        var groupField = new VBox();
+        groupField.setMaxWidth(Double.MAX_VALUE);
+        
         var txtUrl = new TextField();
         txtUrl.setPromptText("Enter URL");
-        txtUrl.setMaxWidth(Double.MAX_VALUE);
-        content.getChildren().add(txtUrl);
+        groupField.getChildren().add(txtUrl);
 
-        HBox.setHgrow(txtUrl, Priority.ALWAYS);
+        var lbInformation = new Label("URL inválida.");
+        groupField.getChildren().add(lbInformation);
+
+        content.getChildren().add(groupField);
+
+        HBox.setHgrow(groupField, Priority.ALWAYS);
 
         var btnSend = new Button("Send");
         BooleanBinding validUrl = Bindings.createBooleanBinding(() -> 
-            validarUrl(txtUrl.getText()
-        ), txtUrl.textProperty());
-        btnSend.disableProperty().bind(validUrl.not());
+            validarUrl(txtUrl.getText()), txtUrl.textProperty());
         btnSend.setTooltip(
             new Tooltip("Ação de envio será implementada futuramente."));
 
         content.getChildren().add(btnSend);
+
+        BooleanBinding urlPreenchida = Bindings.createBooleanBinding(() -> !txtUrl.getText().isBlank(),
+            txtUrl.textProperty());
+        BooleanBinding mostrarErro = urlPreenchida.and(validUrl.not());
+
+        lbInformation.visibleProperty().bind(mostrarErro);
+        lbInformation.managedProperty().bind(lbInformation.visibleProperty());
+
+        BooleanProperty isLoading = new SimpleBooleanProperty(false);
+
+        txtUrl.textProperty().addListener((observable, oldValue, newValue) -> {
+                LOGGER.log(System.Logger.Level.INFO, "CHANGE: {0} -> {1}",
+                    oldValue, newValue);
+            }
+        );
+
+        InvalidationListener invalidationListener = observable -> {
+            LOGGER.log(System.Logger.Level.INFO, "INVALIDATED: URL modificada");
+        };
+
+        txtUrl.textProperty().addListener(invalidationListener);
+        
+        btnSend.disableProperty().bind(validUrl.not().or(isLoading));
 
         VBox.setMargin(content, new Insets(16, 0, 16, 0));
 
