@@ -7,8 +7,6 @@ import java.util.Map;
 import java.util.stream.IntStream;
 
 import dev.toolbox.property.HttpHeader;
-import javafx.application.Platform;
-import javafx.beans.InvalidationListener;
 import javafx.beans.binding.Bindings;
 import javafx.beans.binding.BooleanBinding;
 import javafx.beans.property.BooleanProperty;
@@ -16,6 +14,7 @@ import javafx.beans.property.SimpleBooleanProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
+import javafx.concurrent.Task;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
@@ -38,6 +37,8 @@ import javafx.scene.text.FontWeight;
 
 public class HttpClientView implements BuilderView {
     private static final System.Logger LOGGER = System.getLogger(HttpClientView.class.getName());
+
+    private Label info;
     public Node build() {
         var root = new VBox();
         root.setMaxWidth(Double.MAX_VALUE);
@@ -51,6 +52,12 @@ public class HttpClientView implements BuilderView {
         root.getChildren().add(headers());
         root.getChildren().add(response());
 
+        info = new Label();
+        info.setVisible(false);
+        info.managedProperty().bind(info.visibleProperty());
+
+        root.getChildren().add(info);
+
         return root;
     }
 
@@ -61,6 +68,7 @@ public class HttpClientView implements BuilderView {
         return lbTitle;
     }
 
+    private BooleanProperty isLoading;
     private Node requestBar() {
         var content = new HBox();
         content.setSpacing(5);
@@ -99,49 +107,64 @@ public class HttpClientView implements BuilderView {
         lbInformation.visibleProperty().bind(mostrarErro);
         lbInformation.managedProperty().bind(lbInformation.visibleProperty());
 
-        BooleanProperty isLoading = new SimpleBooleanProperty(false);
-
-        txtUrl.textProperty().addListener((observable, oldValue, newValue) -> {
-                LOGGER.log(System.Logger.Level.INFO, "CHANGE: {0} -> {1}",
-                    oldValue, newValue);
-            }
-        );
-
-        InvalidationListener invalidationListener = observable -> {
-            LOGGER.log(System.Logger.Level.INFO, "INVALIDATED: URL modificada");
-        };
-
-        txtUrl.textProperty().addListener(invalidationListener);
+        isLoading = new SimpleBooleanProperty(false);
         
         btnSend.disableProperty().bind(validUrl.not().or(isLoading));
         btnSend.setOnAction(event -> {
             isLoading.set(true);
 
-            new Thread(new Runnable() {
-                @Override
-                    public void run() {
-                        LOGGER.log(System.Logger.Level.INFO, "Thread Name: {0}", Thread.currentThread().getName());
-                        LOGGER.log(System.Logger.Level.INFO, "UI: {0}", Platform.isFxApplicationThread() ? "UI Thread" : "Background Thread");
-                        try {
-                            Thread.sleep(5_000);
+            var task = new Task<String>() {
+                @Override 
+                protected String call() throws Exception {
+                    updateMessage("Processing simulated request...");
+                    Thread.sleep(5_000);
 
-                            Platform.runLater(() -> {
-                                if (txtResponse == null) return;
-                                txtResponse.setText("Simulated request completed");
-                            });
-                        } catch (InterruptedException e) {
-                            Thread.currentThread().interrupt();
-                        } finally {
-                            Platform.runLater(() -> 
-                                isLoading.set(false));
-                        }
-                    }
-            }).start();
+                    return "Simulated request completed";
+                }
+            };
+
+            if (info != null) {
+                info.textProperty().bind(task.messageProperty());
+                info.visibleProperty().bind(task.runningProperty());
+            }
+
+            task.setOnSucceeded(e -> {
+                txtResponse.setText(task.getValue());
+
+                finalizarTask();
+            });
+
+            task.setOnFailed(e -> {
+                txtResponse.setText("Erro: " + task.getException().getMessage());
+
+                finalizarTask();
+            });
+
+            task.setOnCancelled(e -> finalizarTask());
+
+            task.stateProperty().addListener((observable, oldState, newState) -> 
+                LOGGER.log(System.Logger.Level.INFO, "Task: {0} -> {1}", 
+                    oldState, newState));
+
+            new Thread(task).start();
         });
 
         VBox.setMargin(content, new Insets(16, 0, 16, 0));
 
         return content;
+    }
+
+    private void finalizarTask() {
+        if (isLoading != null) {
+            isLoading.set(false);
+        }
+
+        if (info != null) {
+            info.textProperty().unbind();
+            info.visibleProperty().unbind();
+
+            info.setVisible(false);
+        }
     }
 
     private GridPane createGrid() {
