@@ -4,6 +4,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.IdentityHashMap;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
 import java.util.stream.IntStream;
 
 import dev.toolbox.property.HttpHeader;
@@ -37,6 +38,11 @@ import javafx.scene.text.FontWeight;
 
 public class HttpClientView implements BuilderView {
     private static final System.Logger LOGGER = System.getLogger(HttpClientView.class.getName());
+    private final ExecutorService executor;
+
+    public HttpClientView(ExecutorService executor) {
+        this.executor = executor;
+    }
 
     private Label info;
     public Node build() {
@@ -116,6 +122,9 @@ public class HttpClientView implements BuilderView {
             var task = new Task<String>() {
                 @Override 
                 protected String call() throws Exception {
+                    LOGGER.log(System.Logger.Level.INFO, "Execute task name: {0}", 
+                        Thread.currentThread().getName());
+
                     updateMessage("Processing simulated request...");
                     Thread.sleep(5_000);
 
@@ -146,7 +155,7 @@ public class HttpClientView implements BuilderView {
                 LOGGER.log(System.Logger.Level.INFO, "Task: {0} -> {1}", 
                     oldState, newState));
 
-            new Thread(task).start();
+            executor.submit(task);
         });
 
         VBox.setMargin(content, new Insets(16, 0, 16, 0));

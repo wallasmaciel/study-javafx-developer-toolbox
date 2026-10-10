@@ -1,5 +1,10 @@
 package dev.toolbox;
 
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.atomic.AtomicInteger;
+
 import dev.toolbox.view.BuilderView;
 import dev.toolbox.view.HttpClientView;
 import javafx.application.Application;
@@ -21,8 +26,19 @@ public class DeveloperToolboxApplication extends Application {
     private static final System.Logger LOGGER = System.getLogger(DeveloperToolboxApplication.class.getName());
     private final BuilderView httpClientView;
 
+    private final AtomicInteger threadCounter = new AtomicInteger(0);
+    private final ExecutorService executor;
+
     public DeveloperToolboxApplication() {
-        this.httpClientView = new HttpClientView();
+        ThreadFactory threadFactory = runnable -> {
+            Thread thread = new Thread(runnable);
+            thread.setName("toolbox-worker-" + threadCounter.incrementAndGet());
+            thread.setDaemon(true);
+            return thread;
+        };
+
+        executor = Executors.newFixedThreadPool(2, threadFactory);
+        httpClientView = new HttpClientView(executor);
     }
     
     @Override
@@ -114,6 +130,7 @@ public class DeveloperToolboxApplication extends Application {
     @Override
     public void stop() {
         logLifecycle("stop");
+        executor.shutdown();
     }
     
     private void logLifecycle(String value) {
